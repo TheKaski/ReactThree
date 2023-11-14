@@ -7,7 +7,7 @@ function MyThree() {
   useEffect(() => {
     // === Setup the scene camera and renderer ===
     var scene = new THREE.Scene();
-    var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+    var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 10000);
     var renderer = new THREE.WebGLRenderer();
 
     const controls = new OrbitControls(camera, renderer.domElement)
@@ -34,6 +34,7 @@ function MyThree() {
           this.bottom = this.position.y - this.height / 2;
           this.top = this.position.y + this.height / 2; 
           this.position.x += this.velocity.x;
+          this.position.z += this.velocity.z;
           this.applyGravity(); 
         }
 
@@ -59,6 +60,7 @@ function MyThree() {
       width: 1, 
       height: 1,
       depth: 1,
+      color: '#11c25f',
       velocity: {
         x:0,
         y:-0.01,
@@ -71,10 +73,10 @@ function MyThree() {
 
     //Create a ground 
     const ground = new Box({
-      width: 10,
+      width: 20,
       height: 0.5,
-      depth: 10,
-      color: '#0000ff',
+      depth: 20,
+      color: '#577767',
       position: {
         x: 0,
         y:-2,
@@ -93,8 +95,9 @@ function MyThree() {
     light.castShadow = true;
     scene.add(light);
 
-    //Set camera position and update controls
-    camera.position.z = 5;
+    //Set camera position
+    camera.position.y = 5;
+    camera.rotation.x = -0.5;
 
     //Add key status
     const keys = {
@@ -112,8 +115,7 @@ function MyThree() {
       }
     }
 
-
-    //Add controls
+    //Add controlsnpm
     window.addEventListener('keydown', (event) =>{
       switch(event.code) {
         case 'KeyA':
@@ -122,12 +124,12 @@ function MyThree() {
         case 'KeyD':
           keys.d.pressed = true
           break
-          case 'KeyW':
-            keys.w.pressed = true
-            break
-          case 'KeyS':
-            keys.s.pressed = true
-            break
+        case 'KeyW':
+          keys.w.pressed = true
+          break
+        case 'KeyS':
+          keys.s.pressed = true
+          break
         default:
           break
       }
@@ -141,12 +143,12 @@ function MyThree() {
         case 'KeyD':
           keys.d.pressed = false
           break
-          case 'KeyW':
-            keys.w.pressed = false
-            break
-          case 'KeyS':
-            keys.s.pressed = false
-            break
+        case 'KeyW':
+          keys.w.pressed = false
+          break
+        case 'KeyS':
+          keys.s.pressed = false
+          break
         default:
           break
       }
@@ -156,19 +158,23 @@ function MyThree() {
     function animate() {
       requestAnimationFrame( animate );
       renderer.render( scene, camera );
-      controls.update();
+      //controls.update();
 
       //Cube Movement
       cube.velocity.x = 0;
+      cube.velocity.z = 0;
       if (keys.a.pressed) {
-        cube.velocity.x = -0.05;
-      } else if(keys.d.pressed) {
-        cube.velocity.x = 0.05
-      } else if(keys.w.pressed) {
-        cube.velocity.y = 0.05
-      } else if (keys.pressed.s) {
-        cube.velocity.y = -0.05
+        cube.velocity.x = -0.1;
+      }if(keys.d.pressed) {
+        cube.velocity.x = 0.1
+      } if(keys.w.pressed) {
+        cube.velocity.z = -0.1
+      } if (keys.s.pressed) {
+        cube.velocity.z = 0.1
       }
+
+      // Move camera with the Cube:
+      camera.position.z = cube.position.z + 10;
 
       //Update the cube position
       cube.update(ground);
