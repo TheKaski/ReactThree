@@ -103,6 +103,12 @@ function MyThree() {
       },
       d: {
         pressed: false
+      },
+      w: {
+        pressed: false
+      },
+      s: {
+        pressed: false
       }
     }
 
@@ -116,6 +122,12 @@ function MyThree() {
         case 'KeyD':
           keys.d.pressed = true
           break
+          case 'KeyW':
+            keys.w.pressed = true
+            break
+          case 'KeyS':
+            keys.s.pressed = true
+            break
         default:
           break
       }
@@ -129,12 +141,16 @@ function MyThree() {
         case 'KeyD':
           keys.d.pressed = false
           break
+          case 'KeyW':
+            keys.w.pressed = false
+            break
+          case 'KeyS':
+            keys.s.pressed = false
+            break
         default:
           break
       }
     });
-
-
 
     //Animation loop to show stuff
     function animate() {
@@ -148,11 +164,11 @@ function MyThree() {
         cube.velocity.x = -0.05;
       } else if(keys.d.pressed) {
         cube.velocity.x = 0.05
-
+      } else if(keys.w.pressed) {
+        cube.velocity.y = 0.05
+      } else if (keys.pressed.s) {
+        cube.velocity.y = -0.05
       }
-
-
-
 
       //Update the cube position
       cube.update(ground);
