@@ -1,185 +1,313 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
+
+
+// IMPORT CUSTOM CLASSES:
+import Box from './assets/box';
+import Cylinder from './assets/cylinder';
 
 function MyThree() {
   const refContainer = useRef(null);
   useEffect(() => {
-    // === Setup the scene camera and renderer ===
+    //PARAMETERS FOR THE SCENE CAMERA
+    const fov = 75;
+    const aspectRatio = window.innerWidth / window.innerHeight;
+    const near = 0.01
+    const far = 10000;
+
+    // SETUP THE SCENE WITH CAMERA AND RENDERER
     var scene = new THREE.Scene();
-    var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 10000);
+    var camera = new THREE.PerspectiveCamera(fov, aspectRatio, near, far);
     var renderer = new THREE.WebGLRenderer();
 
-    const controls = new OrbitControls(camera, renderer.domElement)
+    //SET CAMERA POSITON
+    camera.position.y = 5;
+    camera.position.z = 10;
+    camera.rotation.x = -0.5;
 
-    // Class for simple box geometry objects with specific charasteristics
-    class Box extends THREE.Mesh {
-      constructor({width, height, depth, color='#00ff00', velocity = {x:0,y:0,z:0}, position= {x:0,y:0,z:0} }) {
-        super(
-          new THREE.BoxGeometry(width, height, depth),
-          new THREE.MeshStandardMaterial({ color }));
-          
-          this.width = width
-          this.height = height
-          this.depth = depth
-
-          this.position.set(position.x, position.y, position.z)
-          this.bottom = this.position.y - this.height / 2;
-          this.top = this.position.y + this.height / 2; 
-
-          this.velocity = velocity
-          this.gravity = -0.002
-        }
-        update(group) {
-          this.bottom = this.position.y - this.height / 2;
-          this.top = this.position.y + this.height / 2; 
-          this.position.x += this.velocity.x;
-          this.position.z += this.velocity.z;
-          this.applyGravity(); 
-        }
-
-        applyGravity() {
-          this.velocity.y += this.gravity
-          
-          //This is where we hit the ground
-          if (this.bottom + this.velocity.y <= ground.top){
-            this.velocity.y *= 0.7;
-            this.velocity.y = -this.velocity.y;
-          
-          } else this.position.y += this.velocity.y
-        }
-    }
-
-    // Setup renderer
-    renderer.shadowMap.enabled = true;
+    // SETUP THE RENDERER
+    renderer.shadowMap.enabled = true; // Enable shadows
     renderer.setSize(window.innerWidth, window.innerHeight);
     refContainer.current && refContainer.current.appendChild( renderer.domElement );
 
-    //Create a Cube
-    const cube = new Box({
-      width: 1, 
-      height: 1,
-      depth: 1,
-      color: '#11c25f',
-      velocity: {
-        x:0,
-        y:-0.01,
-        z: 0
-      }
-    });
-    //Show and apply shadows
-    cube.castShadow = true;
-    scene.add(cube);
+    // ADDITIONAL GRAPHICAL AXIS WILL BE REMOVED WHEN DEVELOPMENT IS READY
+    scene.add(new THREE.AxesHelper(5))
 
-    //Create a ground 
-    const ground = new Box({
-      width: 20,
+    //ORBIT CONTROLS FOR LOOKING AROUND THE SCENE
+    const controls = new OrbitControls(camera, renderer.domElement)
+
+    //CREATE PHYSICS WORLD WITH CANNON.JS
+    const gravity = 9.81;
+    const world = new CANNON.World({
+      // Apply negative gravity on the y-axis
+      gravity: new CANNON.Vec3(0, -gravity, 0) 
+    });
+
+    //Ground plane:
+    const groundGeo = new THREE.PlaneGeometry(50, 50);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0x383a3b,
+      side: THREE.DoubleSide,
+      wireframe: false
+    });
+    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+    scene.add(groundMesh);
+    groundMesh.receiveShadow = true;
+    //Physical body:
+    const groundBody = new CANNON.Body({
+      shape: new CANNON.Plane(),
+      type: CANNON.Body.STATIC
+    })
+    groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0);
+    world.addBody(groundBody);
+
+    // Vehicle body:
+    const vehicleBody = new Box({
+      width: 4, 
       height: 0.5,
-      depth: 20,
-      color: '#577767',
+      depth: 2,
+      color: '#b208c3',
       position: {
-        x: 0,
-        y:-2,
-        z: 0
-      }
+        x:0,
+        y:6,
+        z:0
+      },
+      mass: 15
     });
-    //Show and apply shadows
-    ground.receiveShadow = true;
-    scene.add(ground);
 
-    //Add lights
-    const light = new THREE.DirectionalLight(0xffffff,3, 100)
-    light.position.y = 2;
-    light.position.z = 3;
-    //Show and apply shadows
-    light.castShadow = true;
-    scene.add(light);
+    //Tire specs:
+    const tireRadius = 0.5;
+    const tireHeight = 0.3;
+    const tireColor = '#a0a0a0';
+    const tireRotation = Math.PI/2;
+    const tireMass = 1;
+   
+    // Tire:
+    const frontRTire = new Cylinder({
+      radius: tireRadius, 
+      height: tireHeight,
+      color: tireColor,
+      position: {
+        x:2,
+        y:2,
+        z:-2
+      },
+      rotation: tireRotation,
+      mass: tireMass
+    });
+   
+    // Tire:
+    const frontLTire = new Cylinder({
+      radius: tireRadius, 
+      height: tireHeight,
+      color: tireColor,
+      position: {
+        x:-2,
+        y:2,
+        z:-2
+      },
+      rotation: tireRotation,
+      mass: tireMass
+    });
+ 
+    // Tire:
+    const rearRTire = new Cylinder({
+      radius: tireRadius, 
+      height: tireHeight,
+      color: tireColor,
+      position: {
+        x:2,
+        y:2,
+        z:2
+      },
+      rotation: tireRotation,
+      mass: tireMass
+    });
 
-    //Set camera position
-    camera.position.y = 5;
-    camera.rotation.x = -0.5;
+    // Tire:
+    const rearLTire = new Cylinder({
+      radius: tireRadius, 
+      height: tireHeight,
+      color: tireColor,
+      position: {
+        x:-2,
+        y:2,
+        z:2
+      },
+      rotation: tireRotation,
+      mass: tireMass
+    });
+    const axis = new CANNON.Vec3(0, 0, 1);
+    
+    //Vehicle:
+    const vehicle = new CANNON.RigidVehicle({chassisBody: vehicleBody});
+    
+    rearRTire.angularDamping = 0.1;
+    const wheelFriction = 0.2;
+    vehicle.addWheel({
+      body: rearRTire,
+      position: new CANNON.Vec3(1.5, 0, 1.5),
+      axis: axis,
+      directionLocal: new CANNON.Vec3(0, -1, 0),
+      friction: wheelFriction
+    })
+    vehicle.addWheel({
+      body: rearLTire,
+      position: new CANNON.Vec3(1.5, 0, -1.5),
+      axis: axis,
+      directionLocal: new CANNON.Vec3(1, -1, 0),
+      friction: wheelFriction
+    })
 
-    //Add key status
-    const keys = {
+    vehicle.addWheel({
+      body: frontRTire,
+      position: new CANNON.Vec3(-1.5, 0, 1.5),
+      axis: axis,
+      directionLocal: new CANNON.Vec3(0, -1, 0),
+      friction: wheelFriction
+    })
+
+    vehicle.addWheel({
+      body: frontLTire,
+      position: new CANNON.Vec3(-1.5, 0, -1.5),
+      axis: axis,
+      directionLocal: new CANNON.Vec3(0, -1, 0),
+      friction: wheelFriction
+    })
+
+    // Add vehicle elements to world and scene
+    vehicle.addToWorld(world);
+    scene.add(vehicleBody.mesh);
+    scene.add(frontRTire.mesh);
+    scene.add(frontLTire.mesh);
+    scene.add(rearRTire.mesh);
+    scene.add(rearLTire.mesh);
+
+//MATERIALS:
+    const groundMaterial = new CANNON.Material('groundMaterial');
+    const wheelMaterial = new CANNON.Material('wheelMaterial');
+    const wheelGroundContactMaterial = new CANNON.ContactMaterial(wheelMaterial, groundMaterial, {
+      friction: 0.3,
+      restitution: 0,
+      contactEquationStiffness: 1000
+    });
+    world.addContactMaterial(wheelGroundContactMaterial);
+  
+     //ADD LIGHTS
+     const light = new THREE.DirectionalLight(0xffffff, 3, 100)
+     light.position.y = 2;
+     light.position.z = 3;
+     light.castShadow = true; // Make this light cast a shadow
+     scene.add(light);
+ 
+    //Store key state
+    const keyState = {
       a: {
         pressed: false
-      },
+        },
       d: {
-        pressed: false
-      },
+          pressed: false
+        },
       w: {
-        pressed: false
-      },
+          pressed: false
+        },
       s: {
-        pressed: false
+          pressed: false
+        }
       }
-    }
 
-    //Add controlsnpm
-    window.addEventListener('keydown', (event) =>{
-      switch(event.code) {
-        case 'KeyA':
-          keys.a.pressed = true
+    const maxForce = 15;
+    const maxSteerVal = Math.PI / 6;
+    //KEYDOWN EVENTLISTENER
+    window.addEventListener('keydown', (event) =>{  
+      switch(event.key) {
+        case 'a':
+          keyState.a.pressed = true
+          vehicle.setSteeringValue(maxSteerVal, 0);
+          vehicle.setSteeringValue(maxSteerVal, 1);
+          break 
+        case 'd':
+          keyState.d.pressed = true
+          vehicle.setSteeringValue(-maxSteerVal, 0);
+          vehicle.setSteeringValue(-maxSteerVal, 1);
           break
-        case 'KeyD':
-          keys.d.pressed = true
+        case 'w':
+          keyState.w.pressed = true
+          vehicle.setWheelForce(-maxForce, 2);
+          vehicle.setWheelForce(-maxForce, 3);
           break
-        case 'KeyW':
-          keys.w.pressed = true
-          break
-        case 'KeyS':
-          keys.s.pressed = true
+        case 's':
+          keyState.s.pressed = true
+          vehicle.setWheelForce(maxForce/2, 2); //NOTE: THe "reverse" is half slower than going forwards
+          vehicle.setWheelForce(maxForce/2, 3);
           break
         default:
-          break
-      }
+          break  
+      }  
     });
 
+    //KEY UP EVENTLISTENER
     window.addEventListener('keyup', (event) =>{
-      switch(event.code) {
-        case 'KeyA':
-          keys.a.pressed = false
+      switch(event.key) {
+        case 'a':
+          keyState.a.pressed = false
+          vehicle.setSteeringValue(0, 0);
+          vehicle.setSteeringValue(0, 1);
           break
-        case 'KeyD':
-          keys.d.pressed = false
+        case 'd':
+          keyState.d.pressed = false
+          vehicle.setSteeringValue(0, 0);
+          vehicle.setSteeringValue(0, 1);
           break
-        case 'KeyW':
-          keys.w.pressed = false
+        case 'w':
+          keyState.w.pressed = false
+          vehicle.setWheelForce(0, 2);
+          vehicle.setWheelForce(0, 3);
           break
-        case 'KeyS':
-          keys.s.pressed = false
+        case 's':
+          keyState.s.pressed = false
+          vehicle.setWheelForce(0, 2);
+          vehicle.setWheelForce(0, 3);
           break
         default:
           break
       }
     });
 
-    //Animation loop to show stuff
+    const timeStep = 1 / 60;
+
+    //ANIMATION LOOP
     function animate() {
       requestAnimationFrame( animate );
       renderer.render( scene, camera );
+      world.step(timeStep)
       //controls.update();
 
-      //Cube Movement
-      cube.velocity.x = 0;
-      cube.velocity.z = 0;
-      if (keys.a.pressed) {
-        cube.velocity.x = -0.1;
-      }if(keys.d.pressed) {
-        cube.velocity.x = 0.1
-      } if(keys.w.pressed) {
-        cube.velocity.z = -0.1
-      } if (keys.s.pressed) {
-        cube.velocity.z = 0.1
-      }
+      //Vehicle Movement
+      if (keyState.a.pressed) {
+        
+      }if(keyState.d.pressed) {
+      
+      } if(keyState.w.pressed) {
+  
+      } if (keyState.s.pressed) {
+      } 
+      //PLANE POSITION:
+      groundMesh.position.copy(groundBody.position);
+      groundMesh.quaternion.copy(groundBody.quaternion);
 
-      // Move camera with the Cube:
-      camera.position.z = cube.position.z + 10;
+      //Vehicle parts
+      vehicleBody.update();
+      frontRTire.update();
+      frontLTire.update();
+      rearRTire.update();
+      rearLTire.update();
 
-      //Update the cube position
-      cube.update(ground);
+      //camera.position.x = vehicleBody.position.x;
+      //camera.position.z = vehicleBody.position.z +10;
     }
-
     //Call the animation function
     animate();
   }, []);
