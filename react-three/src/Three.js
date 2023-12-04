@@ -7,6 +7,7 @@ import { useEffect, useRef } from 'react';
 // IMPORT CUSTOM CLASSES:
 import Box from './assets/box';
 import Cylinder from './assets/cylinder';
+import Car from './assets/car';
 
 function MyThree() {
   const refContainer = useRef(null);
@@ -79,119 +80,33 @@ function MyThree() {
 
     //Tire specs:
     const tireRadius = 0.5;
-    const tireHeight = 0.3;
+    const tireWidth = 0.3;
     const tireColor = '#a0a0a0';
     const tireRotation = Math.PI/2;
-    const tireMass = 1;
-   
-    // Tire:
-    const frontRTire = new Cylinder({
-      radius: tireRadius, 
-      height: tireHeight,
-      color: tireColor,
-      position: {
-        x:2,
-        y:2,
-        z:-2
-      },
-      rotation: tireRotation,
-      mass: tireMass
-    });
-   
-    // Tire:
-    const frontLTire = new Cylinder({
-      radius: tireRadius, 
-      height: tireHeight,
-      color: tireColor,
-      position: {
-        x:-2,
-        y:2,
-        z:-2
-      },
-      rotation: tireRotation,
-      mass: tireMass
-    });
- 
-    // Tire:
-    const rearRTire = new Cylinder({
-      radius: tireRadius, 
-      height: tireHeight,
-      color: tireColor,
-      position: {
-        x:2,
-        y:2,
-        z:2
-      },
-      rotation: tireRotation,
-      mass: tireMass
-    });
-
-    // Tire:
-    const rearLTire = new Cylinder({
-      radius: tireRadius, 
-      height: tireHeight,
-      color: tireColor,
-      position: {
-        x:-2,
-        y:2,
-        z:2
-      },
-      rotation: tireRotation,
-      mass: tireMass
-    });
+    const tireMass = 2;
     const axis = new CANNON.Vec3(0, 0, 1);
     
     //Vehicle:
     const vehicle = new CANNON.RigidVehicle({chassisBody: vehicleBody});
+    const angularDamping = 0.05;
+    const wheelFriction = 0.001;
     
-    rearRTire.angularDamping = 0.1;
-    const wheelFriction = 0.2;
-    vehicle.addWheel({
-      body: rearRTire,
-      position: new CANNON.Vec3(1.5, 0, 1.5),
-      axis: axis,
-      directionLocal: new CANNON.Vec3(0, -1, 0),
-      friction: wheelFriction
-    })
-    vehicle.addWheel({
-      body: rearLTire,
-      position: new CANNON.Vec3(1.5, 0, -1.5),
-      axis: axis,
-      directionLocal: new CANNON.Vec3(1, -1, 0),
-      friction: wheelFriction
-    })
-
-    vehicle.addWheel({
-      body: frontRTire,
-      position: new CANNON.Vec3(-1.5, 0, 1.5),
-      axis: axis,
-      directionLocal: new CANNON.Vec3(0, -1, 0),
-      friction: wheelFriction
-    })
-
-    vehicle.addWheel({
-      body: frontLTire,
-      position: new CANNON.Vec3(-1.5, 0, -1.5),
-      axis: axis,
-      directionLocal: new CANNON.Vec3(0, -1, 0),
-      friction: wheelFriction
-    })
-
-    // Add vehicle elements to world and scene
-    vehicle.addToWorld(world);
+    const firstCar = new Car({vehicleBody, tireRadius, tireWidth, tireColor, tireRotation, tireMass, wheelFriction, angularDamping, axis});
+    firstCar.addToWorld(world);
     scene.add(vehicleBody.mesh);
-    scene.add(frontRTire.mesh);
-    scene.add(frontLTire.mesh);
-    scene.add(rearRTire.mesh);
-    scene.add(rearLTire.mesh);
+    scene.add(firstCar.wheels.frontRight.mesh);
+    scene.add(firstCar.wheels.frontLeft.mesh);
+    scene.add(firstCar.wheels.rearRight.mesh);
+    scene.add(firstCar.wheels.rearLeft.mesh);
+
 
 //MATERIALS:
     const groundMaterial = new CANNON.Material('groundMaterial');
     const wheelMaterial = new CANNON.Material('wheelMaterial');
     const wheelGroundContactMaterial = new CANNON.ContactMaterial(wheelMaterial, groundMaterial, {
-      friction: 0.3,
+      friction: 0.01,
       restitution: 0,
-      contactEquationStiffness: 1000
+      contactEquationStiffness: 10
     });
     world.addContactMaterial(wheelGroundContactMaterial);
   
@@ -225,23 +140,19 @@ function MyThree() {
       switch(event.key) {
         case 'a':
           keyState.a.pressed = true
-          vehicle.setSteeringValue(maxSteerVal, 0);
-          vehicle.setSteeringValue(maxSteerVal, 1);
+          
           break 
         case 'd':
           keyState.d.pressed = true
-          vehicle.setSteeringValue(-maxSteerVal, 0);
-          vehicle.setSteeringValue(-maxSteerVal, 1);
+     
           break
         case 'w':
           keyState.w.pressed = true
-          vehicle.setWheelForce(-maxForce, 2);
-          vehicle.setWheelForce(-maxForce, 3);
+          //firstCar.moveForward();
           break
         case 's':
           keyState.s.pressed = true
-          vehicle.setWheelForce(maxForce/2, 2); //NOTE: THe "reverse" is half slower than going forwards
-          vehicle.setWheelForce(maxForce/2, 3);
+          //firstCar.moveBackward();
           break
         default:
           break  
@@ -253,23 +164,17 @@ function MyThree() {
       switch(event.key) {
         case 'a':
           keyState.a.pressed = false
-          vehicle.setSteeringValue(0, 0);
-          vehicle.setSteeringValue(0, 1);
+          firstCar.centerSteering();
           break
         case 'd':
           keyState.d.pressed = false
-          vehicle.setSteeringValue(0, 0);
-          vehicle.setSteeringValue(0, 1);
+          firstCar.centerSteering();
           break
         case 'w':
           keyState.w.pressed = false
-          vehicle.setWheelForce(0, 2);
-          vehicle.setWheelForce(0, 3);
           break
         case 's':
           keyState.s.pressed = false
-          vehicle.setWheelForce(0, 2);
-          vehicle.setWheelForce(0, 3);
           break
         default:
           break
@@ -287,23 +192,24 @@ function MyThree() {
 
       //Vehicle Movement
       if (keyState.a.pressed) {
-        
+        firstCar.turnLeft();
+
       }if(keyState.d.pressed) {
-      
+        firstCar.turnRight();
+
       } if(keyState.w.pressed) {
+        firstCar.moveForward();
   
       } if (keyState.s.pressed) {
+        firstCar.moveBackward();
       } 
       //PLANE POSITION:
       groundMesh.position.copy(groundBody.position);
       groundMesh.quaternion.copy(groundBody.quaternion);
 
       //Vehicle parts
+      firstCar.update();
       vehicleBody.update();
-      frontRTire.update();
-      frontLTire.update();
-      rearRTire.update();
-      rearLTire.update();
 
       //camera.position.x = vehicleBody.position.x;
       //camera.position.z = vehicleBody.position.z +10;

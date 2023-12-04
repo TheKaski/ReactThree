@@ -3,7 +3,6 @@ import * as CANNON from 'cannon-es';
 
  // CLASS FOR CREATING CYLINDER SHAPED PHYSICAL OBJECTS
  class Cylinder extends CANNON.Body {
-    //TODO: UPDATE THIS TO WORK WITH THE CANNON:JS PHYSICS
     constructor({radius, height, color='#00ff00', position= {x:0,y:0,z:0},rotation=0, mass=0, castShadow = true}) {
       super(
         //Create the graphical body with measurements and color
