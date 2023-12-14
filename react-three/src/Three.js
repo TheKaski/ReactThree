@@ -3,10 +3,8 @@ import * as CANNON from 'cannon-es';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { useEffect, useRef } from 'react';
 
-
 // IMPORT CUSTOM CLASSES:
 import Box from './assets/box';
-import Cylinder from './assets/cylinder';
 import Car from './assets/car';
 
 function MyThree() {
@@ -28,12 +26,12 @@ function MyThree() {
     camera.position.z = 10;
     camera.rotation.x = -0.5;
 
-    // SETUP THE RENDERER
+    //SET THE RENDERER
     renderer.shadowMap.enabled = true; // Enable shadows
     renderer.setSize(window.innerWidth, window.innerHeight);
     refContainer.current && refContainer.current.appendChild( renderer.domElement );
 
-    // ADDITIONAL GRAPHICAL AXIS WILL BE REMOVED WHEN DEVELOPMENT IS READY
+    //ADDITIONAL GRAPHICAL AXIS WILL BE REMOVED WHEN DEVELOPMENT IS READY
     scene.add(new THREE.AxesHelper(5))
 
     //ORBIT CONTROLS FOR LOOKING AROUND THE SCENE
@@ -46,8 +44,18 @@ function MyThree() {
       gravity: new CANNON.Vec3(0, -gravity, 0) 
     });
 
-    //Ground plane:
-    const groundGeo = new THREE.PlaneGeometry(50, 50);
+    //MATERIALS:
+    const groundMaterial = new CANNON.Material('groundMaterial');
+    const wheelMaterial = new CANNON.Material('wheel');
+    const wheelGroundContactMaterial = new CANNON.ContactMaterial(wheelMaterial, groundMaterial, {
+      friction: 0.4,
+      restitution: 1,
+      contactEquationStiffness: 10
+    });
+    world.addContactMaterial(wheelGroundContactMaterial);
+  
+    //GROUND:
+    const groundGeo = new THREE.PlaneGeometry(500, 500);
     const groundMat = new THREE.MeshStandardMaterial({
       color: 0x383a3b,
       side: THREE.DoubleSide,
@@ -59,58 +67,34 @@ function MyThree() {
     //Physical body:
     const groundBody = new CANNON.Body({
       shape: new CANNON.Plane(),
-      type: CANNON.Body.STATIC
+      type: CANNON.Body.STATIC,
     })
     groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0);
     world.addBody(groundBody);
 
     // Vehicle body:
     const vehicleBody = new Box({
-      width: 4, 
+      width: 2, 
       height: 0.5,
-      depth: 2,
+      depth: 4,
       color: '#b208c3',
       position: {
         x:0,
-        y:6,
-        z:0
+        y:4,
+        z:-9
       },
-      mass: 15
-    });
+      mass: 80
+    }); 
 
-    //Tire specs:
-    const tireRadius = 0.5;
-    const tireWidth = 0.3;
-    const tireColor = '#a0a0a0';
-    const tireRotation = Math.PI/2;
-    const tireMass = 2;
-    const axis = new CANNON.Vec3(0, 0, 1);
-    
     //Vehicle:
-    const vehicle = new CANNON.RigidVehicle({chassisBody: vehicleBody});
-    const angularDamping = 0.05;
-    const wheelFriction = 0.001;
-    
-    const firstCar = new Car({vehicleBody, tireRadius, tireWidth, tireColor, tireRotation, tireMass, wheelFriction, angularDamping, axis});
-    firstCar.addToWorld(world);
-    scene.add(vehicleBody.mesh);
-    scene.add(firstCar.wheels.frontRight.mesh);
-    scene.add(firstCar.wheels.frontLeft.mesh);
-    scene.add(firstCar.wheels.rearRight.mesh);
-    scene.add(firstCar.wheels.rearLeft.mesh);
+    const car = new Car({
+      vehicleBody: vehicleBody, 
+      world: world,
+      scene: scene
+    })
+    car.addToWorld(world);
 
-
-//MATERIALS:
-    const groundMaterial = new CANNON.Material('groundMaterial');
-    const wheelMaterial = new CANNON.Material('wheelMaterial');
-    const wheelGroundContactMaterial = new CANNON.ContactMaterial(wheelMaterial, groundMaterial, {
-      friction: 0.01,
-      restitution: 0,
-      contactEquationStiffness: 10
-    });
-    world.addContactMaterial(wheelGroundContactMaterial);
-  
-     //ADD LIGHTS
+     //LIGHTS
      const light = new THREE.DirectionalLight(0xffffff, 3, 100)
      light.position.y = 2;
      light.position.z = 3;
@@ -134,25 +118,21 @@ function MyThree() {
       }
 
     const maxForce = 15;
-    const maxSteerVal = Math.PI / 6;
+    const maxSteerVal = Math.PI / 15;
     //KEYDOWN EVENTLISTENER
     window.addEventListener('keydown', (event) =>{  
       switch(event.key) {
         case 'a':
           keyState.a.pressed = true
-          
           break 
         case 'd':
           keyState.d.pressed = true
-     
           break
         case 'w':
           keyState.w.pressed = true
-          //firstCar.moveForward();
           break
         case 's':
           keyState.s.pressed = true
-          //firstCar.moveBackward();
           break
         default:
           break  
@@ -164,26 +144,33 @@ function MyThree() {
       switch(event.key) {
         case 'a':
           keyState.a.pressed = false
-          firstCar.centerSteering();
+          car.setSteeringValue(0, 2);
+          car.setSteeringValue(0, 3);
           break
         case 'd':
           keyState.d.pressed = false
-          firstCar.centerSteering();
+          car.setSteeringValue(0, 2);
+          car.setSteeringValue(0, 3);
           break
         case 'w':
           keyState.w.pressed = false
+          car.applyEngineForce(0, 0);
+          car.applyEngineForce(0, 1);
           break
         case 's':
           keyState.s.pressed = false
+          car.applyEngineForce(0, 0);
+          car.applyEngineForce(0, 1);
           break
         default:
           break
       }
     });
 
-    const timeStep = 1 / 60;
+    const timeStep = 1.0 / 60.0;
+    world.fixedStep = timeStep;
 
-    //ANIMATION LOOP
+//ANIMATION LOOP
     function animate() {
       requestAnimationFrame( animate );
       renderer.render( scene, camera );
@@ -192,24 +179,28 @@ function MyThree() {
 
       //Vehicle Movement
       if (keyState.a.pressed) {
-        firstCar.turnLeft();
+        car.setSteeringValue(Math.PI/8, 2);
+        car.setSteeringValue(Math.PI/8, 3);
 
       }if(keyState.d.pressed) {
-        firstCar.turnRight();
+    
+        car.setSteeringValue(-Math.PI/8, 2);
+        car.setSteeringValue(-Math.PI/8, 3);
 
       } if(keyState.w.pressed) {
-        firstCar.moveForward();
-  
+        car.applyEngineForce(300, 0);
+        car.applyEngineForce(300, 1);
+
       } if (keyState.s.pressed) {
-        firstCar.moveBackward();
+        car.applyEngineForce(-300, 0);
+        car.applyEngineForce(-300, 1);
       } 
       //PLANE POSITION:
       groundMesh.position.copy(groundBody.position);
       groundMesh.quaternion.copy(groundBody.quaternion);
 
-      //Vehicle parts
-      firstCar.update();
-      vehicleBody.update();
+      //Vehicle
+      car.update();
 
       //camera.position.x = vehicleBody.position.x;
       //camera.position.z = vehicleBody.position.z +10;
