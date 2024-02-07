@@ -6,15 +6,15 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import Track from './track'
 import Box from './box'
 import Car from './car'
+import ThirdPersonCamera from './thirdPersonCamera';
 /**
  * This is a class for wrapping the basic functionality of a Game instance wrapping together the elements of the game
  * including, CANNON.js physics, THREE.js graphics, lights and various other classes developped for the game.
  * The goal for this class is to offer a simple easy to use interface for the main program to control the game logic, updates and lifecycle of the game instance itself
  */
-
 class Game {
     //CONSTANTS:
-    fov = 75;
+    fov = 55;
     aspectRatio = window.innerWidth / window.innerHeight;
     near = 0.01
     far = 10000;
@@ -33,6 +33,7 @@ class Game {
          fixedStep: this.timeStep 
     });    
 
+    //OBJECTS
     car;
     track;
 
@@ -53,6 +54,8 @@ class Game {
         }
 
     //This is a simple container for all the loaded models our game has
+    //V1.0 won't have more then one model for each type of object but this keeps the possibility
+    //To easily add more in the future
     models = {
         vehicleChassis: [],
         wheels: [],
@@ -61,17 +64,17 @@ class Game {
 
     constructor(modelFiles, refContainer)
     {
-        //SET CAMERA POSITON
-        this.camera.position.y = 5;
-        this.camera.position.z = 10;
-        this.camera.rotation.x = -0.5;
+        // Setup the renderer in refContainer:
         this.initRenderer(refContainer);
+        // Set state of loaded models to false:
         this.modelsLoaded = false;
+        //Setup light in the scene:
         this.initLight();
-        //Here we start loading the models:
+        //Start loading the models:
         this.initModels(modelFiles); 
-           //ADDITIONAL GRAPHICAL AXIS WILL BE REMOVED WHEN DEVELOPMENT IS READY
+        //ADDITIONAL GRAPHICAL AXIS WILL BE REMOVED WHEN DEVELOPMENT IS READY
         this.scene.add(new THREE.AxesHelper(5))
+       
     }
     //This is function for setting up the game constructing certain Car, track and wheelModels
     async setup()
@@ -82,52 +85,70 @@ class Game {
             this.initTrack(this.models.tracks[0])
         ]);
         this.initSteeringControls();
-       
-    }
 
+        //Create a thirdPerson camera from the camera of the game with the given offset and lookAt:
+        this.thirdPCamera = new ThirdPersonCamera(this.car.chassisBody, new THREE.Vector3(0, 3, -6), new THREE.Vector3(0, 2, -3), this.camera, )
+    }
+    /**
+     * Function for updating the game instance called by the animation loop:
+     */
     update()
     {
         //Only start updating when the models are loaded:
         if(this.modelsLoaded)
-        {
+        {   //Update renderer, world and camera:
             this.renderer.render(this.scene, this.camera);
             this.world.step(this.timeStep)
-            
-         //Vehicle Movement
-           if (this.#keyState.a.pressed) {
+            this.thirdPCamera.update(this.timeStep)
+
+            // Handle Vehicle Movement
+            if (this.#keyState.a.pressed) {
              this.car.setSteeringValue(Math.PI/8, 0);
              this.car.setSteeringValue(Math.PI/8, 1);
            }
-       
-           if(this.#keyState.d.pressed) {
+    
+            if(this.#keyState.d.pressed) {
              this.car.setSteeringValue(-Math.PI/8, 0);
              this.car.setSteeringValue(-Math.PI/8, 1);  
            } 
        
-           if(this.#keyState.w.pressed) {
+            if(this.#keyState.w.pressed) {
              this.car.moveForward()
            } 
        
-           if (this.#keyState.s.pressed) {
+            if (this.#keyState.s.pressed) {
              this.car.moveBackward();
            } 
+           //Update the car instance:
            this.car.update();
         }
     }
+    /**
+     * Function for restarting the game:
+     */
     restart()
     {
 
     }
 
+    /**
+     * Function for setting up the renderer inside the refContainer:
+     * @param {React.MutableRefObject<null>} refContainer 
+     */
     initRenderer(refContainer)
     {
         //RENDERER
         this.refContainer = refContainer;
         this.renderer.shadowMap.enabled = true; // Enable shadows
+        this.renderer.setClearColor(new THREE.Color(0xabcdef)); 
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.refContainer.current && this.refContainer.current.appendChild( this.renderer.domElement );
     }
-
+    /**
+     * Function for loading 3D models from .glb or .gltf files with gltfLoader instance:
+     * @param {*} model 
+     * @returns a Promise which resolves to the loaded model scene or rejects if undefined
+     */
     async loadModel(model) {
         return new Promise((resolve, reject) => {
           this.gltfLoader.load(model, (gltfScene) => {
@@ -172,20 +193,22 @@ class Game {
             }
         
         }
+        //After models are loaded call setup function to construct the objects from 3D models:
         await this.setup();
+        //Set the modelsLoaded status to true once setup is finished
         this.modelsLoaded = true;
     }
 
     //Function for constructing instance of Car with given models:
     async initCar(chassis, wheels)
     {
-        //Create the vehicleBody needed to construct a Raycastvehicle
+        //Create the vehicleBody object with the Box class:
         const vehicleBody = new Box({
             width: 2, 
             height: 0.10,
             depth: 4,
             position: {
-                x:0,
+                x:16,
                 y:4,
                 z:-3
             },
@@ -193,7 +216,7 @@ class Game {
             mesh: chassis,
         })
 
-        //Setup the car
+        //Create the car object
         this.car = new Car( {
             vehicleBody: vehicleBody,
             world: this.world,
@@ -201,26 +224,34 @@ class Game {
             wheelMesh: wheels
         })
         
-
     }
-    //Function for constructing instance of Track with given model:
+    /**
+     * Function fro constructing the track object from 3D mesh
+     * @param {Mesh} track 
+     */
     async initTrack(track)
     {
         
         this.track = new Track({mesh: track, world: this.world, scene:this.scene })
     }
 
+    /**
+     * Function for setting up the basic lights in the scene:
+     */
     initLight()
     {
          //LIGHTS
-        const light = new THREE.DirectionalLight(0xffffff, 3, 100)
+        //const light = new THREE.DirectionalLight(0xffffff, 3, 100)
+        const light = new THREE.DirectionalLight(0xffffff, 3, 100);
         light.position.y = 2;
         light.position.z = 3;
         light.castShadow = true; // Make this light cast a shadow
         this.scene.add(light);
     }
 
-
+    /**
+     * Function for setting up the evenrListeners for the window inorder tocontrol the car:
+     */
     initSteeringControls()
     {
         //KEYDOWN EVENTLISTENER
