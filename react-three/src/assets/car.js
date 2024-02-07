@@ -22,22 +22,22 @@ class Car extends CANNON.RaycastVehicle {
             directionLocal: new CANNON.Vec3(0, -1, 0),
             suspensionStiffness: 20,
             suspensionRestLength: 0.25,
-            frictionSlip: 0.8,
-            skidInfo: 0.6,
+            frictionSlip: 0.85,
+            skidInfo: 10,
             dampingRelaxation: 2,
             dampingCompression: 2.4,
             maxSuspensionForce: 500,
             rollInfluence:  0.2,
             axleLocal: new CANNON.Vec3(-1, 0, 0),
             chassisConnectionPointLocal: new CANNON.Vec3(1, 0,0),
-            maxSuspensionTravel: 0.6,
-            customSlidingRotationalSpeed: 5,
+            maxSuspensionTravel: 0.5,
+            customSlidingRotationalSpeed: 200,
             useCustomSlidingRotationalSpeed: true
           };
 
           this.constants = {
-            maxSteerVal: Math.PI/10,
-            maxForce: 70,
+            maxSteerVal: Math.PI,
+            maxForce: 50,
             maxRpm: 8000,
             peakRpm: 6000,
             maxPowerOutput: 500,
@@ -109,7 +109,7 @@ class Car extends CANNON.RaycastVehicle {
         this.options.chassisConnectionPointLocal.set(-0.55, this.options.radius, 0.5);
         this.addWheel(this.options);
 
-        this.options.frictionSlip = 1.0;
+        this.options.frictionSlip = 0.75;
         //frontLeft wheel
         this.options.chassisConnectionPointLocal.set(-0.55, this.options.radius, -0.5);
         this.addWheel(this.options);
