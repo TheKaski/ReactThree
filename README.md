@@ -1,4 +1,4 @@
-# Time attack racing game for delivery robot
+# Time attack racing game with delivery robot
 This is a simple yet fun project implemented using Node.js together with React, CANNON.js and Three.js. The game is a simple time attack racing game where the player is trying to beat their own record lap time around a slippery track.
 
 ## Physics:
