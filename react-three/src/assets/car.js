@@ -1,5 +1,6 @@
 import * as CANNON from 'cannon-es';
 import Wheel from './wheel';
+import * as THREE from 'three'
 
 /**
  * Car is a wrapper class for a RaycastVehicle instance to contain the functionality of the raycastVehicle
@@ -27,7 +28,7 @@ class Car extends CANNON.RaycastVehicle {
             dampingRelaxation: 2,
             dampingCompression: 2.4,
             maxSuspensionForce: 500,
-            rollInfluence:  0.2,
+            rollInfluence:  0.5,
             axleLocal: new CANNON.Vec3(-1, 0, 0),
             chassisConnectionPointLocal: new CANNON.Vec3(1, 0,0),
             maxSuspensionTravel: 0.5,
@@ -38,13 +39,11 @@ class Car extends CANNON.RaycastVehicle {
           this.constants = {
             maxSteerVal: Math.PI,
             maxForce: 50,
-            maxRpm: 8000,
-            peakRpm: 6000,
-            maxPowerOutput: 500,
           }
 
         this.world = world;
         this.scene = scene;
+        this.light = this.addLights();
         
         if(wheelMesh) this.wheelMesh = wheelMesh;
 
@@ -78,7 +77,15 @@ class Car extends CANNON.RaycastVehicle {
 
         //Update the position of the chassisBody:
         this.chassisBody.update();
-
+        const carPosition = this.chassisBody.position;
+        const offset = new THREE.Vector3(0, 0, 1); // Adjust the offset based on your needs
+        offset.applyQuaternion(this.chassisBody.quaternion);
+        this.light.position.copy(carPosition).add(offset);
+        
+        const carForward = new THREE.Vector3(0, 0, 10); // Adjust the forward vector based on your car's orientation
+        carForward.applyQuaternion(this.chassisBody.quaternion);
+        this.light.target.position.copy(carPosition).add(carForward);
+      
     }
     createWheelBodies() {
 
@@ -100,7 +107,6 @@ class Car extends CANNON.RaycastVehicle {
     addWheels(){
          
         //TODO: Allow to position the wheels with parameters
-
         //rearRight wheel
         this.options.chassisConnectionPointLocal.set(0.55, this.options.radius, 0.5);
         this.addWheel(this.options);
@@ -118,6 +124,25 @@ class Car extends CANNON.RaycastVehicle {
         this.options.chassisConnectionPointLocal.set(0.55, this.options.radius, -0.5);
         this.addWheel(this.options);
 
+    }
+    addLights()
+    {
+  
+        //Spotlight as a headlight
+        const light = new THREE.SpotLight( 0xf9e79f ,200, 10, Math.PI/6)
+        light.castShadow = true;
+
+        //Add target to front of the car:
+        const headLightTarget= new THREE.Object3D();
+        this.scene.add(headLightTarget)
+
+        // Set the target's position based on the vehicle's forward direction
+        const carForward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.chassisBody.quaternion);
+        headLightTarget.position.copy(this.chassisBody.position.clone().vadd(carForward));
+
+        light.target = headLightTarget;
+        this.scene.add(light);
+        return light
     }
 
     turnRight()

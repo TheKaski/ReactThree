@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import Track from './track'
@@ -26,7 +25,6 @@ class Game {
     camera = new THREE.PerspectiveCamera(this.fov, this.aspectRatio, this.near, this.far);
     renderer = new THREE.WebGLRenderer();
     gltfLoader =  new GLTFLoader();
-    controls = new OrbitControls(this.camera, this.renderer.domElement) //Maybe let this be here as a togled on off property
     world = new CANNON.World({
         // Apply negative gravity on the y-axis
          gravity: new CANNON.Vec3(0, -this.gravity, 0),
@@ -140,7 +138,7 @@ class Game {
         //RENDERER
         this.refContainer = refContainer;
         this.renderer.shadowMap.enabled = true; // Enable shadows
-        this.renderer.setClearColor(new THREE.Color(0xabcdef)); 
+        this.renderer.setClearColor(new THREE.Color(0x06303F)); 
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.refContainer.current && this.refContainer.current.appendChild( this.renderer.domElement );
     }
@@ -242,7 +240,7 @@ class Game {
     {
          //LIGHTS
         //const light = new THREE.DirectionalLight(0xffffff, 3, 100)
-        const light = new THREE.DirectionalLight(0xffffff, 3, 100);
+        const light = new THREE.DirectionalLight(0xffe7ff , 0.5, 10);
         light.position.y = 2;
         light.position.z = 3;
         light.castShadow = true; // Make this light cast a shadow

@@ -10,6 +10,7 @@ class Track extends CANNON.Body{
         if(mesh)
         {
             this.mesh = mesh;
+            this.mesh.receiveShadow = true;
         }
   
         scene.add(this.mesh)
